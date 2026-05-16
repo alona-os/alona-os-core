@@ -1,0 +1,47 @@
+<%!-- app shell layout for internal dashboards + command center chrome --%>
+<div class="flex h-screen bg-base-200">
+  <aside class="flex w-64 flex-col border-r border-base-300 bg-base-100 px-3 py-4">
+    <div class="mb-6 flex items-center gap-2 px-2">
+      <div class="rounded-lg bg-primary px-3 py-1 text-sm font-bold text-primary-content">A</div>
+      <span class="text-sm font-semibold tracking-tight">Alona OS</span>
+    </div>
+
+    <nav class="flex-1 space-y-1 overflow-y-auto text-sm">
+      <.nav_item href={~p"/"} active={@active_nav == :command_center}>Command Center</.nav_item>
+      <.nav_item href={~p"/resources"} active={@active_nav == :resources}>Resources</.nav_item>
+      <.nav_item href={~p"/energy"} active={@active_nav == :energy}>Energy</.nav_item>
+      <.nav_item href={~p"/water"} active={@active_nav == :water}>Water</.nav_item>
+      <.nav_item href={~p"/environment"} active={@active_nav == :environment}>Environment</.nav_item>
+      <.nav_item href={~p"/food-production"} active={@active_nav == :food}>Food Production</.nav_item>
+      <.nav_item href={~p"/security"} active={@active_nav == :security}>Security</.nav_item>
+      <.nav_item href={~p"/tasks"} active={@active_nav == :tasks}>Tasks</.nav_item>
+      <.nav_item href={~p"/maintenance"} active={@active_nav == :maintenance}>Maintenance</.nav_item>
+      <.nav_item href={~p"/automations"} active={@active_nav == :automations}>Automations</.nav_item>
+      <.nav_item href={~p"/protocols"} active={@active_nav == :protocols}>Protocols</.nav_item>
+      <.nav_item href={~p"/finance"} active={@active_nav == :finance}>Finance</.nav_item>
+      <.nav_item href={~p"/timeline"} active={@active_nav == :timeline}>Timeline</.nav_item>
+      <.nav_item href={~p"/settings"} active={@active_nav == :settings}>Settings</.nav_item>
+    </nav>
+  </aside>
+
+  <section class="flex min-w-0 flex-1 flex-col">
+    <header class="flex h-14 shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-6">
+      <div class="min-w-0">
+        <p class="truncate text-xs text-base-content/60">system mode · normal</p>
+        <p class="truncate text-sm font-semibold">{@page_title}</p>
+      </div>
+
+      <div class="flex items-center gap-4 text-xs text-base-content/60">
+        <span>{Calendar.strftime(DateTime.utc_now(:second), "%b %d, %H:%M UTC")}</span>
+      </div>
+    </header>
+
+    <main class="min-h-0 flex-1 overflow-y-auto p-6">
+      {@inner_content}
+    </main>
+
+    <div class="px-6 pb-4">
+      <.flash_group flash={@flash} id="toast-group" />
+    </div>
+  </section>
+</div>
