@@ -1,9 +1,19 @@
 import Config
 
+# homebrew / local postgres often has no `postgres` role; default to your login (or PGUSER).
+repo_username =
+  System.get_env("DATABASE_USERNAME") ||
+    System.get_env("PGUSER") ||
+    System.get_env("USER") ||
+    "postgres"
+
+repo_password = System.get_env("DATABASE_PASSWORD") || System.get_env("PGPASSWORD") || ""
+repo_hostname = System.get_env("DATABASE_HOST") || System.get_env("PGHOST") || "localhost"
+
 config :alona_core, AlonaCore.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
+  username: repo_username,
+  password: repo_password,
+  hostname: repo_hostname,
   database: "alona_os_core_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
