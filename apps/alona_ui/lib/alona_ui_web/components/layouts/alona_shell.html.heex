@@ -2,25 +2,25 @@
 <div class="flex h-screen bg-base-200">
   <aside class="flex w-64 flex-col border-r border-base-300 bg-base-100 px-3 py-4">
     <div class="mb-6 flex items-center gap-2 px-2">
-      <div class="rounded-lg bg-primary px-3 py-1 text-sm font-bold text-primary-content">A</div>
+      <img src={~p"/images/icon.png"} class="size-7 shrink-0" alt="Alona OS" />
       <span class="text-sm font-semibold tracking-tight">Alona OS</span>
     </div>
 
     <nav class="flex-1 space-y-1 overflow-y-auto text-sm">
-      <.nav_item href={~p"/"} active={@active_nav == :command_center}>Command Center</.nav_item>
-      <.nav_item href={~p"/resources"} active={@active_nav == :resources}>Resources</.nav_item>
-      <.nav_item href={~p"/energy"} active={@active_nav == :energy}>Energy</.nav_item>
-      <.nav_item href={~p"/water"} active={@active_nav == :water}>Water</.nav_item>
-      <.nav_item href={~p"/environment"} active={@active_nav == :environment}>Environment</.nav_item>
-      <.nav_item href={~p"/food-production"} active={@active_nav == :food}>Food Production</.nav_item>
-      <.nav_item href={~p"/security"} active={@active_nav == :security}>Security</.nav_item>
-      <.nav_item href={~p"/tasks"} active={@active_nav == :tasks}>Tasks</.nav_item>
-      <.nav_item href={~p"/maintenance"} active={@active_nav == :maintenance}>Maintenance</.nav_item>
-      <.nav_item href={~p"/automations"} active={@active_nav == :automations}>Automations</.nav_item>
-      <.nav_item href={~p"/protocols"} active={@active_nav == :protocols}>Protocols</.nav_item>
-      <.nav_item href={~p"/finance"} active={@active_nav == :finance}>Finance</.nav_item>
-      <.nav_item href={~p"/timeline"} active={@active_nav == :timeline}>Timeline</.nav_item>
-      <.nav_item href={~p"/settings"} active={@active_nav == :settings}>Settings</.nav_item>
+      <.nav_item href={~p"/"} active={@active_nav == :command_center} icon="hero-command-line">Command Center</.nav_item>
+      <.nav_item href={~p"/resources"} active={@active_nav == :resources} icon="hero-archive-box">Resources</.nav_item>
+      <.nav_item href={~p"/energy"} active={@active_nav == :energy} icon="hero-bolt">Energy</.nav_item>
+      <.nav_item href={~p"/water"} active={@active_nav == :water} icon="hero-beaker">Water</.nav_item>
+      <.nav_item href={~p"/environment"} active={@active_nav == :environment} icon="hero-globe-alt">Environment</.nav_item>
+      <.nav_item href={~p"/food-production"} active={@active_nav == :food} icon="hero-cake">Food Production</.nav_item>
+      <.nav_item href={~p"/security"} active={@active_nav == :security} icon="hero-shield-check">Security</.nav_item>
+      <.nav_item href={~p"/tasks"} active={@active_nav == :tasks} icon="hero-clipboard-document-list">Tasks</.nav_item>
+      <.nav_item href={~p"/maintenance"} active={@active_nav == :maintenance} icon="hero-wrench-screwdriver">Maintenance</.nav_item>
+      <.nav_item href={~p"/automations"} active={@active_nav == :automations} icon="hero-arrow-path">Automations</.nav_item>
+      <.nav_item href={~p"/protocols"} active={@active_nav == :protocols} icon="hero-book-open">Protocols</.nav_item>
+      <.nav_item href={~p"/finance"} active={@active_nav == :finance} icon="hero-banknotes">Finance</.nav_item>
+      <.nav_item href={~p"/timeline"} active={@active_nav == :timeline} icon="hero-calendar-days">Timeline</.nav_item>
+      <.nav_item href={~p"/settings"} active={@active_nav == :settings} icon="hero-cog-6-tooth">Settings</.nav_item>
     </nav>
   </aside>
 

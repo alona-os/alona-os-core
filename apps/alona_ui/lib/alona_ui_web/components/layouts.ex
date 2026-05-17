@@ -13,16 +13,18 @@ defmodule AlonaUiWeb.Layouts do
 
   attr :href, :string, required: true
   attr :active, :boolean, default: false
+  attr :icon, :string, default: nil
   slot :inner_block, required: true
 
   def nav_item(assigns) do
-    base = "flex rounded-md px-2.5 py-2 font-medium transition"
+    base = "flex items-center gap-2.5 rounded-md px-2.5 py-2 font-medium transition"
     tone = if assigns.active, do: " bg-base-200 text-base-content", else: " hover:bg-base-200/70 text-base-content/80"
 
     assigns = assign(assigns, :klass, base <> tone)
 
     ~H"""
     <.link navigate={@href} class={@klass}>
+      <.icon :if={@icon} name={@icon} class="size-4 shrink-0 opacity-70" />
       {render_slot(@inner_block)}
     </.link>
     """
