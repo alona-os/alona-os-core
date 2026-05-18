@@ -11,7 +11,7 @@ defmodule AlonaUiWeb.CommandCenterLive do
 
     {:ok,
      socket
-     |> assign(:page_title, "command center")
+     |> assign(:page_title, "Command Center")
      |> assign(:active_nav, :command_center)
      |> reload_assigns()}
   end
@@ -22,10 +22,16 @@ defmodule AlonaUiWeb.CommandCenterLive do
 
     attention =
       Enum.map(binds.alerts, fn evt ->
-        %{kind: :alert, title: evt.title, subtitle: evt.description, severity: evt.severity}
+        %{
+          kind: :alert,
+          title: evt.title,
+          subtitle: evt.description,
+          severity: evt.severity,
+          occurred_at: evt.occurred_at
+        }
       end)
       |> Enum.concat(Enum.map(Enum.take(overdue, 3), fn task -> %{kind: :task, task: task} end))
-      |> Enum.take(6)
+      |> Enum.take(5)
 
     stream_map = binds.stream_map
 
@@ -53,182 +59,251 @@ defmodule AlonaUiWeb.CommandCenterLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <section class="mb-8 space-y-2">
-      <p class="text-xs font-semibold uppercase tracking-[0.35em] text-base-content/50">command center</p>
-
-      <h1 class="text-3xl font-semibold tracking-tight">Operational snapshot</h1>
-
-      <p class="text-sm text-base-content/65">energy, indoor comfort and household signals at a glance.</p>
-    </section>
-
-    <section class="mb-10 space-y-4">
-      <h2 class="text-xs font-semibold uppercase tracking-[0.28em] text-base-content/50">resources snapshot</h2>
-
-      <div class="grid gap-4 md:grid-cols-4">
-        <.metric_card
-          title="Battery SOC"
-          value={@battery_soc}
-          unit="%"
-          subtitle="battery headroom"
-          status={soc_status(@battery_soc)}
-        />
-
-        <.metric_card
-          title="PV production"
-          value={pretty_kw(@pv_kw)}
-          unit="kW"
-          subtitle="/array instantaneous"
-          status="success"
-        />
-
-        <.metric_card title="House load" value={pretty_kw(@load_kw)} unit="kW" subtitle="aggregate demand" />
-
-        <.metric_card
-          title="Water tank"
-          value={@tank_pct}
-          unit="%"
-          subtitle={"#{liters_hint(@liters)} L est."}
-          status={tank_status(@tank_pct)}
-        />
+    <div class="space-y-6">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Command Center</h1>
+        <p class="text-sm text-base-content/60">Overview of your home systems and operations</p>
       </div>
-    </section>
 
-    <section class="space-y-4">
-      <h2 class="text-xs font-semibold uppercase tracking-[0.26em] text-base-content/50">indoor environment</h2>
+      <div class="grid grid-cols-12 gap-6">
+        <div class="col-span-12 space-y-6 lg:col-span-8">
+          <section>
+            <h2 class="mb-3 text-sm font-medium text-base-content/60">Resources Snapshot</h2>
 
-      <div class="grid gap-4 md:grid-cols-3">
-        <%= for room <- @rooms do %>
-          <.room_card
-            name={room.name}
-            temperature={room.temperature}
-            humidity={room.humidity}
-            sensor_status={room.sensor_status}
-            last_seen={room.last_seen}
-          />
-        <% end %>
-      </div>
-    </section>
+            <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+              <.metric_card
+                title="Battery SOC"
+                value={@battery_soc}
+                unit="%"
+                subtitle="battery headroom"
+                status={soc_status(@battery_soc)}
+              />
 
-    <%= if @alerts != [] do %>
-      <section class="mt-10 space-y-4">
-        <h2 class="text-xs font-semibold uppercase tracking-[0.26em] text-base-content/50">active alerts</h2>
+              <.metric_card
+                title="PV production"
+                value={pretty_kw(@pv_kw)}
+                unit="kW"
+                subtitle="/array instantaneous"
+                status="success"
+              />
 
-        <div class="space-y-3">
-          <%= for alert <- @alerts do %>
-            <.alert_banner title={alert.title} message={alert.description} severity={alert.severity || "warning"} />
+              <.metric_card title="House load" value={pretty_kw(@load_kw)} unit="kW" subtitle="aggregate demand" />
+
+              <.metric_card
+                title="Water tank"
+                value={@tank_pct}
+                unit="%"
+                subtitle={"#{liters_hint(@liters)} L est."}
+                status={tank_status(@tank_pct)}
+              />
+            </div>
+          </section>
+
+          <section>
+            <h2 class="mb-3 text-sm font-medium text-base-content/60">Indoor Environment</h2>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <%= for room <- @rooms do %>
+                <.room_card
+                  name={room.name}
+                  temperature={room.temperature}
+                  humidity={room.humidity}
+                  sensor_status={room.sensor_status}
+                  last_seen={room.last_seen}
+                />
+              <% end %>
+            </div>
+          </section>
+
+          <%= if @alerts != [] do %>
+            <section>
+              <h2 class="mb-3 text-sm font-medium text-base-content/60">Active Alerts</h2>
+
+              <div class="space-y-2">
+                <%= for alert <- @alerts do %>
+                  <.alert_banner
+                    title={alert.title}
+                    message={alert.description}
+                    severity={alert.severity || "warning"}
+                    occurred_at={alert.occurred_at}
+                  />
+                <% end %>
+              </div>
+            </section>
           <% end %>
-        </div>
-      </section>
-    <% end %>
 
-    <section class="mt-10 space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-xs font-semibold uppercase tracking-[0.26em] text-base-content/50">Today's focus</h2>
+          <section>
+            <div class="mb-3 flex items-center justify-between">
+              <h2 class="text-sm font-medium text-base-content/60">Today's Tasks</h2>
 
-        <span class="text-xs text-base-content/55"><%= overdue_count(@today_tasks) %> overdue</span>
-      </div>
-
-      <div class="space-y-2">
-        <%= for task <- @today_tasks do %>
-          <.task_item task={task} />
-        <% end %>
-      </div>
-    </section>
-
-    <div class="mt-12 grid gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(260px,3fr)]">
-      <section class="space-y-4">
-        <h2 class="text-xs font-semibold uppercase tracking-[0.26em] text-base-content/50">system pulses</h2>
-
-        <div class="grid gap-4 sm:grid-cols-4">
-          <article class="rounded-xl border bg-base-100 p-4 text-sm shadow-sm border-base-200">
-            <p class="text-xs text-base-content/55">automations</p>
-
-            <p class="mt-4 text-xl font-semibold text-base-content/70">planned</p>
-          </article>
-
-          <article class="rounded-xl border bg-base-100 p-4 text-sm shadow-sm border-base-200">
-            <p class="text-xs text-base-content/55">generator</p>
-
-            <p class="mt-4 text-lg font-semibold"><%= banner_text(@gen_status) %></p>
-          </article>
-
-          <article class="rounded-xl border bg-base-100 p-4 text-sm shadow-sm border-base-200">
-            <p class="text-xs text-base-content/55">network</p>
-
-            <p class="mt-4 text-xl font-semibold text-success">online</p>
-          </article>
-
-          <article class="rounded-xl border bg-base-100 p-4 text-sm shadow-sm border-base-200">
-            <p class="text-xs text-base-content/55">security</p>
-
-            <p class="mt-4 text-lg font-semibold text-base-content/60">planned</p>
-          </article>
-        </div>
-      </section>
-
-      <aside class="space-y-6">
-        <section class={
-          Enum.join(["rounded-xl border bg-base-100 p-5 shadow", attention_border(@attention)], " ")
-        }>
-          <div class="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <p class="text-xs uppercase tracking-[0.3em] text-base-content/55">Needs attention</p>
-
-              <p class="mt-2 text-xl font-semibold"><%= length(@attention) %> signals</p>
+              <span class="text-xs text-base-content/60">
+                <span :if={overdue_count(@today_tasks) > 0} class="mr-2 text-error">
+                  <%= overdue_count(@today_tasks) %> overdue
+                </span>
+                <%= length(@today_tasks) %> total
+              </span>
             </div>
 
-            <span class={"#{attention_dot(@attention)} h-3 w-3 rounded-full"}></span>
-          </div>
-
-          <%= if @attention == [] do %>
-            <p class="text-center text-sm text-base-content/60">everything looks steady right now.</p>
-          <% else %>
-            <div class="space-y-3">
-              <%= for entry <- @attention do %>
-                <%= if entry.kind == :alert do %>
-                  <.alert_banner title={entry.title} message={entry.subtitle} severity={entry.severity || "warning"} compact />
-                <% else %>
-                  <.task_item task={entry.task} compact />
+            <div class="space-y-2">
+              <%= if @today_tasks == [] do %>
+                <div class="rounded-xl border border-dashed border-base-300 bg-base-100 py-8 text-center">
+                  <p class="text-sm text-base-content/60">No tasks for today</p>
+                </div>
+              <% else %>
+                <%= for task <- Enum.take(@today_tasks, 4) do %>
+                  <.task_item task={task} />
                 <% end %>
               <% end %>
             </div>
-          <% end %>
-        </section>
+          </section>
 
-        <section class="rounded-xl border bg-base-100 p-5 shadow-sm border-base-200">
-          <p class="text-xs uppercase tracking-[0.3em] text-base-content/55">recent timeline</p>
+          <section>
+            <h2 class="mb-3 text-sm font-medium text-base-content/60">System Status</h2>
 
-          <div class="mt-4 space-y-0">
-            <%= for event <- Enum.take(@timeline, 6) do %>
-              <.timeline_item event={event} />
-            <% end %>
-          </div>
-        </section>
+            <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+              <article class="rounded-xl border border-base-300 bg-base-100 shadow-sm">
+                <div class="px-4 pb-4 pt-4">
+                  <div class="mb-1 flex items-center gap-2">
+                    <div class="size-2 rounded-full bg-success"></div>
+                    <span class="text-xs text-base-content/60">Automations</span>
+                  </div>
+                  <p class="text-lg font-semibold">0 active</p>
+                </div>
+              </article>
 
-        <section class="rounded-xl border bg-base-100 p-5 shadow-sm border-base-200 space-y-3">
-          <p class="text-xs uppercase tracking-[0.3em] text-base-content/55">quick actions</p>
+              <article class="rounded-xl border border-base-300 bg-base-100 shadow-sm">
+                <div class="px-4 pb-4 pt-4">
+                  <div class="mb-1 flex items-center gap-2">
+                    <div class="size-2 rounded-full bg-success"></div>
+                    <span class="text-xs text-base-content/60">Security</span>
+                  </div>
+                  <p class="text-lg font-semibold">All armed</p>
+                </div>
+              </article>
 
-          <div class="grid gap-2 sm:grid-cols-2">
-            <.link navigate={~p"/tasks"} class="btn btn-outline btn-sm normal-case justify-center">
-              jump to tasks
-            </.link>
+              <article class="rounded-xl border border-base-300 bg-base-100 shadow-sm">
+                <div class="px-4 pb-4 pt-4">
+                  <div class="mb-1 flex items-center gap-2">
+                    <div class={"size-2 rounded-full #{gen_status_dot(@gen_status)}"}></div>
+                    <span class="text-xs text-base-content/60">Generator</span>
+                  </div>
+                  <p class="text-lg font-semibold"><%= banner_text(@gen_status) %></p>
+                </div>
+              </article>
 
-            <.link navigate={~p"/finance"} class="btn btn-outline btn-sm normal-case justify-center">
-              log expense
-            </.link>
+              <article class="rounded-xl border border-base-300 bg-base-100 shadow-sm">
+                <div class="px-4 pb-4 pt-4">
+                  <div class="mb-1 flex items-center gap-2">
+                    <div class="size-2 rounded-full bg-success"></div>
+                    <span class="text-xs text-base-content/60">Network</span>
+                  </div>
+                  <p class="text-lg font-semibold">Online</p>
+                </div>
+              </article>
+            </div>
+          </section>
+        </div>
 
-            <.button class="btn btn-outline btn-sm normal-case flex-1" disabled>
-              observations (planned)
-            </.button>
+        <div class="col-span-12 space-y-6 lg:col-span-4">
+          <section class={[
+            "flex flex-col gap-6 rounded-xl border bg-base-100 py-6 shadow-sm",
+            if(@attention == [], do: "border-base-300", else: "border-warning/50")
+          ]}>
+            <div class="px-6 pb-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div :if={@attention != []} class="size-2 animate-pulse rounded-full bg-warning"></div>
+                  <h3 class="text-sm font-medium">Needs Attention</h3>
+                </div>
+                <span class="text-xs text-base-content/60"><%= length(@attention) %></span>
+              </div>
+            </div>
 
-            <.button class="btn btn-outline btn-sm normal-case flex-1" disabled>
-              protocols (planned)
-            </.button>
-          </div>
-        </section>
-      </aside>
+            <div class="px-6">
+              <%= if @attention == [] do %>
+                <div class="py-4 text-center">
+                  <div class="mx-auto mb-2 flex size-10 items-center justify-center rounded-full bg-success/10">
+                    <div class="size-3 rounded-full bg-success"></div>
+                  </div>
+                  <p class="text-sm text-base-content/60">All systems normal</p>
+                </div>
+              <% else %>
+                <div class="space-y-3">
+                  <%= for entry <- @attention do %>
+                    <%= if entry.kind == :alert do %>
+                      <.alert_banner
+                        title={entry.title}
+                        message={entry.subtitle}
+                        severity={entry.severity || "warning"}
+                        occurred_at={entry.occurred_at}
+                        compact
+                      />
+                    <% else %>
+                      <.task_item task={entry.task} compact />
+                    <% end %>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </section>
+
+          <section class="rounded-xl border border-base-300 bg-base-100 shadow-sm">
+            <div class="border-b border-base-200 px-4 pb-3 pt-4">
+              <h3 class="text-sm font-medium">Recent Activity</h3>
+            </div>
+
+            <div class="px-4 pb-4 pt-2">
+              <div class="space-y-0">
+                <%= for event <- Enum.take(@timeline, 6) do %>
+                  <.timeline_item event={event} />
+                <% end %>
+              </div>
+            </div>
+          </section>
+
+          <section class="rounded-xl border border-base-300 bg-base-100 shadow-sm">
+            <div class="border-b border-base-200 px-4 pb-3 pt-4">
+              <h3 class="text-sm font-medium">Quick Actions</h3>
+            </div>
+
+            <div class="p-4">
+              <div class="grid grid-cols-2 gap-2">
+                <.link navigate={~p"/tasks"} class="v0-quick-tile">
+                  <.icon name="hero-plus-micro" class="size-4" />
+                  <span class="text-xs">Add Task</span>
+                </.link>
+
+                <.link navigate={~p"/finance"} class="v0-quick-tile">
+                  <.icon name="hero-banknotes-micro" class="size-4" />
+                  <span class="text-xs">Log Expense</span>
+                </.link>
+
+                <.link navigate={~p"/timeline"} class="v0-quick-tile">
+                  <.icon name="hero-eye-micro" class="size-4" />
+                  <span class="text-xs">Observation</span>
+                </.link>
+
+                <.link navigate={~p"/protocols"} class="v0-quick-tile">
+                  <.icon name="hero-document-text-micro" class="size-4" />
+                  <span class="text-xs">Protocol</span>
+                </.link>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
     """
+  end
+
+  defp gen_status_dot(status_text) do
+    t = status_text |> String.downcase()
+
+    cond do
+      t == "" or t == "unknown" -> "bg-base-content/40"
+      String.contains?(t, "standby") or String.contains?(t, "off") -> "bg-base-content/50"
+      true -> "bg-success"
+    end
   end
 
   defp overdue_count(list),
@@ -255,10 +330,4 @@ defmodule AlonaUiWeb.CommandCenterLive do
 
   defp banner_text(text),
     do: text |> String.replace("_", " ") |> String.capitalize()
-
-  defp attention_border([]), do: "border-success/70"
-  defp attention_border(_), do: "border-warning/60"
-
-  defp attention_dot([]), do: "bg-success"
-  defp attention_dot(_entries), do: "bg-warning animate-pulse"
 end

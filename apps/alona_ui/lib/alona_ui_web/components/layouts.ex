@@ -17,14 +17,24 @@ defmodule AlonaUiWeb.Layouts do
   slot :inner_block, required: true
 
   def nav_item(assigns) do
-    base = "flex items-center gap-2.5 rounded-md px-2.5 py-2 font-medium transition"
-    tone = if assigns.active, do: " bg-base-200 text-base-content", else: " hover:bg-base-200/70 text-base-content/80"
+    base = "flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition"
+    icon_opacity = if assigns.active, do: "opacity-90", else: "opacity-70"
 
-    assigns = assign(assigns, :klass, base <> tone)
+    tone =
+      if assigns.active do
+        " bg-[var(--alona-sidebar-accent)] text-[var(--alona-sidebar-active-fg)]"
+      else
+        " text-[var(--alona-sidebar-muted)] hover:bg-[var(--alona-sidebar-hover-bg)] hover:text-[var(--alona-sidebar-fg)]"
+      end
+
+    assigns =
+      assigns
+      |> assign(:klass, base <> tone)
+      |> assign(:icon_opacity, icon_opacity)
 
     ~H"""
     <.link navigate={@href} class={@klass}>
-      <.icon :if={@icon} name={@icon} class="size-4 shrink-0 opacity-70" />
+      <.icon :if={@icon} name={@icon} class={["size-4 shrink-0", @icon_opacity]} />
       {render_slot(@inner_block)}
     </.link>
     """

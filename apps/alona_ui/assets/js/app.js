@@ -32,10 +32,74 @@ const liveSocket = new LiveSocket("/live", Socket, {
   hooks: {...colocatedHooks},
 })
 
+let shellTopbarClockId = null
+
+function syncShellTopbarThemeToggle() {
+  const root = document.getElementById("shell-topbar-theme")
+  if (!root) return
+  const moon = root.querySelector(".shell-tb-theme-moon")
+  const sun = root.querySelector(".shell-tb-theme-sun")
+  if (!moon || !sun) return
+  const attr = document.documentElement.getAttribute("data-theme")
+  let dark = false
+  if (attr === "dark") dark = true
+  else if (attr === "light") dark = false
+  else dark = window.matchMedia("(prefers-color-scheme: dark)").matches
+  moon.classList.toggle("hidden", dark)
+  moon.classList.toggle("flex", !dark)
+  sun.classList.toggle("hidden", !dark)
+  sun.classList.toggle("flex", dark)
+}
+
+function initShellTopbarClock() {
+  if (shellTopbarClockId !== null) {
+    clearInterval(shellTopbarClockId)
+    shellTopbarClockId = null
+  }
+  const root = document.getElementById("shell-topbar-datetime")
+  if (!root) return
+
+  const dateEl = root.querySelector(".shell-tb-date")
+  const timeEl = root.querySelector(".shell-tb-time")
+  const sun = root.querySelector(".shell-tb-icon-sun")
+  const moon = root.querySelector(".shell-tb-icon-moon")
+  if (!dateEl || !timeEl || !sun || !moon) return
+
+  const tick = () => {
+    const now = new Date()
+    dateEl.textContent = now.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    })
+    timeEl.textContent = now.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+    const day = now.getHours() >= 6 && now.getHours() < 18
+    sun.classList.toggle("hidden", !day)
+    moon.classList.toggle("hidden", day)
+  }
+  tick()
+  shellTopbarClockId = setInterval(tick, 1000)
+}
+
+function initShellTopbarChrome() {
+  initShellTopbarClock()
+  syncShellTopbarThemeToggle()
+}
+
 // Show progress bar on live navigation and form submits
 topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
-window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
+window.addEventListener("phx:page-loading-stop", _info => {
+  topbar.hide()
+  initShellTopbarChrome()
+})
+
+window.addEventListener("alona-theme-applied", () => syncShellTopbarThemeToggle())
+
+document.addEventListener("DOMContentLoaded", () => initShellTopbarChrome())
 
 // connect if there are any LiveViews on the page
 liveSocket.connect()

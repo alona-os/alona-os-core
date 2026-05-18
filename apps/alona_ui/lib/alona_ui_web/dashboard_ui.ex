@@ -4,6 +4,8 @@ defmodule AlonaUiWeb.DashboardUi do
   """
   use Phoenix.Component
 
+  import AlonaUiWeb.CoreComponents
+
   @metric_borders %{
     "normal" => "border-base-300",
     "warning" => "border-warning",
@@ -83,16 +85,30 @@ defmodule AlonaUiWeb.DashboardUi do
       </div>
 
       <div class="grid grid-cols-2 gap-4">
-        <div>
-          <p class="text-lg font-semibold">{@temp_text}</p>
-
-          <p class="text-xs text-base-content/55">temperature (°c)</p>
+        <div class="flex items-center gap-2">
+          <div class="rounded-md bg-base-200 p-2">
+            <.icon name="hero-sun-micro" class="size-4 text-[oklch(55%_0.12_25)]" />
+          </div>
+          <div>
+            <div class="flex items-baseline gap-1">
+              <span class="text-lg font-semibold">{@temp_text}</span>
+              <span class="text-xs text-base-content/55">°C</span>
+            </div>
+            <span class="text-xs text-base-content/55">Temperature</span>
+          </div>
         </div>
 
-        <div>
-          <p class="text-lg font-semibold">{@humi_text}</p>
-
-          <p class="text-xs text-base-content/55">humidity (%)</p>
+        <div class="flex items-center gap-2">
+          <div class="rounded-md bg-base-200 p-2">
+            <.icon name="hero-eye-dropper-micro" class="size-4 text-[oklch(60%_0.15_220)]" />
+          </div>
+          <div>
+            <div class="flex items-baseline gap-1">
+              <span class="text-lg font-semibold">{@humi_text}</span>
+              <span class="text-xs text-base-content/55">%</span>
+            </div>
+            <span class="text-xs text-base-content/55">Humidity</span>
+          </div>
         </div>
       </div>
 
@@ -109,18 +125,40 @@ defmodule AlonaUiWeb.DashboardUi do
 
   attr :compact, :boolean, default: false
 
-  def alert_banner(assigns) do
-    assigns = assign(assigns, envelope: envelope_style(assigns.severity))
+  attr :occurred_at, :any, default: nil
+
+  def alert_banner(%{compact: true} = assigns) do
+    assigns =
+      assigns
+      |> assign(:icon_name, severity_row_icon(assigns.severity))
+      |> assign(:icon_class, severity_row_icon_class(assigns.severity))
+      |> assign(:ago_min, minutes_ago(assigns.occurred_at))
 
     ~H"""
-    <div class={[
-      "rounded-lg border p-4 shadow-sm",
-      assigns.compact && "py-3",
-      assigns.envelope
-    ]}>
-      <p class="text-sm font-semibold">{@title}</p>
+    <div class="flex items-center gap-2 py-2">
+      <.icon name={@icon_name} class={["size-4 shrink-0", @icon_class]} />
+      <span class="flex-1 truncate text-sm">{@title}</span>
+      <span :if={@ago_min != nil} class="shrink-0 text-xs text-base-content/60">{@ago_min}m ago</span>
+    </div>
+    """
+  end
 
-      <p :if={@message} class="mt-1 text-xs text-base-content/65">{@message}</p>
+  def alert_banner(assigns) do
+    assigns =
+      assigns
+      |> assign(:surface, alert_card_surface(assigns.severity))
+      |> assign(:icon_name, severity_card_icon(assigns.severity))
+      |> assign(:icon_class, severity_row_icon_class(assigns.severity))
+      |> assign(:ago_min, minutes_ago(assigns.occurred_at))
+
+    ~H"""
+    <div class={"flex items-start gap-3 rounded-lg border p-3 #{@surface}"}>
+      <.icon name={@icon_name} class={["mt-0.5 size-5 shrink-0", @icon_class]} />
+      <div class="min-w-0 flex-1">
+        <p class="text-sm font-medium">{@title}</p>
+        <p :if={not blank?(@message)} class="mt-1 text-xs text-base-content/60">{@message}</p>
+        <p :if={@ago_min != nil} class="mt-1 text-xs text-base-content/60">{@ago_min}m ago</p>
+      </div>
     </div>
     """
   end
@@ -129,27 +167,56 @@ defmodule AlonaUiWeb.DashboardUi do
 
   attr :compact, :boolean, default: false
 
-  def task_item(assigns) do
-    assigns = assign(assigns, :badge, badge_for_priority(assigns.task.priority))
+  def task_item(%{compact: true} = assigns) do
+    assigns =
+      assigns
+      |> assign(:due_txt, task_due_label(assigns.task))
+      |> assign(:status_ic, task_status_row_icon(assigns.task.status))
+      |> assign(:status_tn, task_status_row_class(assigns.task.status))
 
     ~H"""
-    <div class={[
-      "rounded-lg border border-base-300 bg-base-100 p-3 shadow-sm",
-      assigns.compact && "py-2"
-    ]}>
-      <div class="flex justify-between gap-4">
-        <div class="min-w-0">
-          <p class="truncate font-medium">{@task.title}</p>
+    <div class="flex items-center gap-2 py-2">
+      <.icon name={@status_ic} class={["size-4 shrink-0", @status_tn]} />
+      <span class="flex-1 truncate text-sm">{@task.title}</span>
+      <span class="shrink-0 text-xs text-base-content/60">{@due_txt}</span>
+    </div>
+    """
+  end
 
-          <p class="mt-1 text-xs text-base-content/55">
-            {readable_status(@task.status)}
-            <span :if={@task.due_at}>· due {Calendar.strftime(@task.due_at, "%d %b")}</span>
-          </p>
+  def task_item(assigns) do
+    task = assigns.task
+    due_txt = task_due_label(task)
+    src_lbl = source_label(task)
+
+    assigns =
+      assigns
+      |> assign(:status_ic, task_status_row_icon(task.status))
+      |> assign(:status_tn, task_status_row_class(task.status))
+      |> assign(:due_txt, due_txt)
+      |> assign(:src_lbl, src_lbl)
+      |> assign(:priority_tone, priority_row_tone(task.priority))
+      |> assign(:show_meta?, due_txt != "" || src_lbl != nil)
+
+    ~H"""
+    <div class="flex items-start gap-3 rounded-lg border border-base-300 bg-base-100 p-3">
+      <.icon name={@status_ic} class={["mt-0.5 size-5 shrink-0", @status_tn]} />
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <p class="text-sm font-medium">{@task.title}</p>
+          <span class={[
+            "rounded-md border-0 px-2 py-0.5 text-xs font-medium capitalize",
+            @priority_tone
+          ]}>
+            {@task.priority}
+          </span>
         </div>
-
-        <span class={"badge badge-soft capitalize #{@badge}"}>
-          {@task.priority}
-        </span>
+        <p :if={not blank?(@task.description)} class="mt-1 line-clamp-2 text-xs text-base-content/60">
+          {@task.description}
+        </p>
+        <div :if={@show_meta?} class="mt-2 flex flex-wrap items-center gap-3 text-xs text-base-content/60">
+          <span :if={@due_txt != ""}>Due: {@due_txt}</span>
+          <span :if={@src_lbl} class="capitalize">Source: {@src_lbl}</span>
+        </div>
       </div>
     </div>
     """
@@ -225,17 +292,83 @@ defmodule AlonaUiWeb.DashboardUi do
 
   defp last_seen_text(_), do: "last updated unavailable"
 
-  defp envelope_style("warning"), do: "border-warning bg-warning/10"
-  defp envelope_style("error"), do: "border-error bg-error/10"
-  defp envelope_style(_), do: "border-base-300 bg-base-100"
+  defp alert_card_surface("error"), do: "border-error/30 bg-error/10"
+  defp alert_card_surface("warning"), do: "border-warning/30 bg-warning/10"
+  defp alert_card_surface("info"), do: "border-info/30 bg-info/10"
+  defp alert_card_surface(_), do: "border-base-300 bg-base-100"
 
-  defp readable_status(nil), do: "unknown"
+  defp severity_card_icon("error"), do: "hero-exclamation-circle-mini"
+  defp severity_card_icon("warning"), do: "hero-exclamation-triangle-mini"
+  defp severity_card_icon(_), do: "hero-information-circle-mini"
 
-  defp readable_status(status), do: status |> to_string() |> String.capitalize()
+  defp severity_row_icon("error"), do: "hero-exclamation-circle-micro"
+  defp severity_row_icon("warning"), do: "hero-exclamation-triangle-micro"
+  defp severity_row_icon(_), do: "hero-information-circle-micro"
 
-  defp badge_for_priority("high"), do: "badge-error"
-  defp badge_for_priority("medium"), do: "badge-warning"
-  defp badge_for_priority(_other), do: "badge-ghost"
+  defp severity_row_icon_class("error"), do: "text-error"
+  defp severity_row_icon_class("warning"), do: "text-warning"
+  defp severity_row_icon_class(_), do: "text-info"
+
+  defp minutes_ago(%DateTime{} = at) do
+    DateTime.diff(DateTime.utc_now(:microsecond), at, :minute) |> max(0)
+  end
+
+  defp minutes_ago(_), do: nil
+
+  defp task_status_row_icon("completed"), do: "hero-check-circle-micro"
+  defp task_status_row_icon("in-progress"), do: "hero-clock-micro"
+  defp task_status_row_icon("in_progress"), do: "hero-clock-micro"
+  defp task_status_row_icon("overdue"), do: "hero-exclamation-circle-micro"
+  defp task_status_row_icon(_), do: "hero-stop-circle-micro"
+
+  defp task_status_row_class("completed"), do: "text-success"
+  defp task_status_row_class("in-progress"), do: "text-info"
+  defp task_status_row_class("in_progress"), do: "text-info"
+  defp task_status_row_class("overdue"), do: "text-error"
+  defp task_status_row_class(_), do: "text-base-content/60"
+
+  defp task_due_label(%{due_at: nil}), do: ""
+
+  defp task_due_label(%{due_at: %DateTime{} = due_at}) do
+    today = Date.utc_today()
+    due_date = DateTime.to_date(due_at)
+    diff = Date.diff(due_date, today)
+
+    cond do
+      diff == 0 ->
+        "Today"
+
+      diff == 1 ->
+        "Tomorrow"
+
+      diff == -1 ->
+        "Yesterday"
+
+      diff < -1 ->
+        "#{abs(diff)} days overdue"
+
+      diff <= 7 ->
+        "In #{diff} days"
+
+      true ->
+        Calendar.strftime(due_date, "%b %d")
+    end
+  end
+
+  defp task_due_label(_), do: ""
+
+  defp source_label(%{source_type: t}) when is_binary(t) and t != "",
+    do: t |> String.replace("_", " ")
+
+  defp source_label(_), do: nil
+
+  defp priority_row_tone("high"), do: "bg-error/20 text-error"
+  defp priority_row_tone("medium"), do: "bg-warning/20 text-warning"
+  defp priority_row_tone(_), do: "bg-base-200 text-base-content/70"
+
+  defp blank?(nil), do: true
+  defp blank?(s) when is_binary(s), do: String.trim(s) == ""
+  defp blank?(_), do: false
 
   defp dot(nil), do: "bg-base-content/35"
 

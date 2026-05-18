@@ -18,6 +18,7 @@ defmodule AlonaUiWeb.Router do
     pipe_through :browser
 
     live_session :shell,
+      on_mount: [{AlonaUiWeb.ShellAssigns, :default}],
       layout: {AlonaUiWeb.Layouts, :alona_shell} do
       live "/", CommandCenterLive
 

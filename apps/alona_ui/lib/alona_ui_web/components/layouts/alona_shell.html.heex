@@ -1,12 +1,12 @@
-<%!-- app shell layout for internal dashboards + command center chrome --%>
-<div class="flex h-screen bg-base-200">
-  <aside class="flex w-64 flex-col border-r border-base-300 bg-base-100 px-3 py-4">
-    <div class="mb-6 flex items-center gap-2 px-2">
-      <img src={~p"/images/logo.svg"} class="w-12 h-auto shrink-0" alt="Alona OS" />
+<%!-- matches ref/app/layout.tsx + app-sidebar + app-topbar: h-screen overflow-hidden, aside w-56, main scrolls --%>
+<div class="flex h-screen overflow-hidden bg-base-100">
+  <aside class="alona-shell-sidebar flex w-56 shrink-0 flex-col border-r border-[var(--alona-sidebar-border)] text-[var(--alona-sidebar-fg)]">
+    <div class="flex h-14 shrink-0 items-center gap-2 border-b border-[var(--alona-sidebar-border)] px-3">
+      <img src={~p"/images/logo.svg"} class="h-8 w-8 shrink-0 object-contain" alt="Alona OS" />
       <span class="text-sm font-semibold tracking-tight">Alona OS</span>
     </div>
 
-    <nav class="flex-1 space-y-1 overflow-y-auto text-sm">
+    <nav class="flex-1 space-y-0.5 overflow-y-auto px-2 py-3 text-sm">
       <.nav_item href={~p"/"} active={@active_nav == :command_center} icon="hero-command-line">Command Center</.nav_item>
       <.nav_item href={~p"/resources"} active={@active_nav == :resources} icon="hero-archive-box">Resources</.nav_item>
       <.nav_item href={~p"/energy"} active={@active_nav == :energy} icon="hero-bolt">Energy</.nav_item>
@@ -24,23 +24,153 @@
     </nav>
   </aside>
 
-  <section class="flex min-w-0 flex-1 flex-col">
-    <header class="flex h-14 shrink-0 items-center justify-between border-b border-base-300 bg-base-100 px-6">
-      <div class="min-w-0">
-        <p class="truncate text-xs text-base-content/60">system mode · normal</p>
-        <p class="truncate text-sm font-semibold">{@page_title}</p>
+  <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <header class="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-base-300 bg-[var(--alona-topbar-bg)] px-4">
+      <%!-- v0 app-topbar: no title; left cluster + right actions (bg-card) --%>
+      <div class="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto">
+        <div class="flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-3 py-1.5">
+          <span class="size-2 animate-pulse rounded-full bg-success"></span>
+          <span class="text-sm font-medium text-success">Normal</span>
+        </div>
+
+        <div class="hidden h-5 w-px shrink-0 bg-base-300 sm:block"></div>
+
+        <div
+          id="shell-topbar-datetime"
+          class="hidden items-center gap-3 text-base-content/60 sm:flex"
+          phx-update="ignore"
+        >
+          <div class="flex items-center gap-1.5">
+            <.icon name="hero-calendar-days-micro" class="size-4 shrink-0" />
+            <span class="shell-tb-date text-sm">—</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <.icon name="hero-sun-micro" class="shell-tb-icon-sun size-4 shrink-0" />
+            <.icon name="hero-moon-micro" class="shell-tb-icon-moon hidden size-4 shrink-0" />
+            <span class="shell-tb-time font-mono text-sm tabular-nums">--:--</span>
+          </div>
+        </div>
+
+        <div class="hidden items-center gap-1.5 text-base-content/60 md:flex">
+          <.icon name="hero-cloud-micro" class="size-4 shrink-0" />
+          <span class="text-sm">22°C</span>
+        </div>
       </div>
 
-      <div class="flex items-center gap-4 text-xs text-base-content/60">
-        <span>{Calendar.strftime(DateTime.utc_now(:second), "%b %d, %H:%M UTC")}</span>
+      <div class="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          id="shell-topbar-theme"
+          class="btn btn-ghost btn-square btn-sm relative"
+          aria-label="Toggle light or dark theme"
+          phx-update="ignore"
+          onclick="window.alonaToggleLightDark && window.alonaToggleLightDark()"
+        >
+          <span class="shell-tb-theme-moon absolute inset-0 flex items-center justify-center">
+            <.icon name="hero-moon-micro" class="size-5" />
+          </span>
+          <span class="shell-tb-theme-sun absolute inset-0 hidden items-center justify-center">
+            <.icon name="hero-sun-micro" class="size-5" />
+          </span>
+        </button>
+
+        <div class="dropdown dropdown-end z-20">
+          <div tabindex="0" role="button" class="btn btn-ghost btn-square btn-sm relative" aria-label="Active alerts">
+            <.icon name="hero-bell-micro" class="size-5" />
+            <span :if={@header_alerts != []} class="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-error text-[10px] font-medium text-error-content">
+              {length(@header_alerts)}
+            </span>
+          </div>
+          <div
+            tabindex="-1"
+            class="dropdown-content z-[100] mt-2 w-80 rounded-box border border-base-300 bg-base-100 p-0 shadow-md"
+          >
+            <div class="border-b border-base-300 px-3 py-2">
+              <p class="text-sm font-medium">Active Alerts</p>
+              <p class="text-xs text-base-content/60">{length(@header_alerts)} active</p>
+            </div>
+            <%= if @header_alerts == [] do %>
+              <div class="px-3 py-6 text-center text-sm text-base-content/60">
+                <.icon name="hero-bell-micro" class="mx-auto mb-2 size-8 opacity-50" />
+                <p>No active alerts</p>
+              </div>
+            <% else %>
+              <ul class="max-h-72 overflow-y-auto">
+                <%= for alert <- @header_alerts do %>
+                  <% {dot_class, badge_classes} =
+                    case alert.severity do
+                      "error" -> {"bg-error", "badge badge-error badge-sm"}
+                      "warning" -> {"bg-warning", "badge badge-warning badge-sm"}
+                      _ -> {"bg-info", "badge badge-info badge-sm"}
+                    end %>
+                  <li class="border-b border-base-200 px-3 py-3 last:border-b-0">
+                    <div class="flex w-full flex-col gap-1">
+                      <div class="flex w-full items-center gap-2">
+                        <span class={"size-2 shrink-0 rounded-full #{dot_class}"} aria-hidden="true"></span>
+                        <span class="flex-1 text-sm font-medium">{alert.title}</span>
+                        <span class={badge_classes}>{alert.severity}</span>
+                      </div>
+                      <p class="pl-4 text-xs text-base-content/60">{alert.description}</p>
+                    </div>
+                  </li>
+                <% end %>
+              </ul>
+              <div class="border-t border-base-300 p-2">
+                <.link
+                  navigate={~p"/timeline"}
+                  class="btn btn-ghost btn-sm btn-block text-primary"
+                >
+                  View all alerts
+                </.link>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="dropdown dropdown-end z-20">
+          <div tabindex="0" role="button" class="btn btn-primary btn-sm gap-1.5">
+            <.icon name="hero-plus-micro" class="size-4 shrink-0" />
+            <span class="hidden sm:inline">Quick Action</span>
+          </div>
+          <ul
+            tabindex="-1"
+            class="dropdown-content menu border-base-300 z-[100] mt-2 w-48 rounded-box border bg-base-100 p-2 shadow-md"
+          >
+            <li>
+              <.link navigate={~p"/tasks"} class="gap-2">
+                <span class="flex size-4 items-center justify-center text-xs font-medium" aria-hidden="true">+</span>
+                Add Task
+              </.link>
+            </li>
+            <li>
+              <.link navigate={~p"/finance"} class="gap-2">
+                <span class="flex size-4 items-center justify-center text-xs" aria-hidden="true">$</span>
+                Log Expense
+              </.link>
+            </li>
+            <li>
+              <.link navigate={~p"/timeline"} class="gap-2">
+                <span class="flex size-4 items-center justify-center text-xs" aria-hidden="true">!</span>
+                Add Observation
+              </.link>
+            </li>
+            <li class="pointer-events-none my-1 h-px bg-base-300" aria-hidden="true"></li>
+            <li>
+              <.link navigate={~p"/protocols"} class="gap-2 text-warning">
+                <span class="flex size-4 items-center justify-center text-xs" aria-hidden="true">!</span>
+                Activate Protocol
+              </.link>
+            </li>
+          </ul>
+        </div>
       </div>
     </header>
 
-    <main class="min-h-0 flex-1 overflow-y-auto p-6">
+    <main class="min-h-0 flex-1 overflow-y-auto bg-base-100 p-6">
       {@inner_content}
     </main>
 
-    <div class="px-6 pb-4">
+    <div class="shrink-0 px-4 pb-4">
       <.flash_group flash={@flash} id="toast-group" />
     </div>
   </section>

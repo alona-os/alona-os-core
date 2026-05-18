@@ -6,30 +6,72 @@
     <meta name="csrf-token" content={get_csrf_token()} />
     <.live_title default="Alona OS" suffix=" · local homestead command center">{assigns[:page_title]}</.live_title>
     <link rel="icon" type="image/png" href={~p"/images/icon.png"} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      phx-track-static
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
     </script>
     <script>
       (() => {
-        const setTheme = (theme) => {
+        // default light matches v0 reference (light-first :root); use "system" in the toggle for OS preference
+        const notifyThemeApplied = () => window.dispatchEvent(new Event("alona-theme-applied"));
+
+        const applyTheme = (theme) => {
           if (theme === "system") {
-            localStorage.removeItem("phx:theme");
+            localStorage.setItem("phx:theme", "system");
             document.documentElement.removeAttribute("data-theme");
-          } else {
-            localStorage.setItem("phx:theme", theme);
-            document.documentElement.setAttribute("data-theme", theme);
+            notifyThemeApplied();
+            return;
           }
+          const resolved = theme || "light";
+          localStorage.setItem("phx:theme", resolved);
+          document.documentElement.setAttribute("data-theme", resolved);
+          notifyThemeApplied();
         };
         if (!document.documentElement.hasAttribute("data-theme")) {
-          setTheme(localStorage.getItem("phx:theme") || "system");
+          const stored = localStorage.getItem("phx:theme");
+          if (stored === "system") {
+            document.documentElement.removeAttribute("data-theme");
+          } else {
+            applyTheme(stored || "light");
+          }
         }
-        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
-        
-        window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+        notifyThemeApplied();
+        window.addEventListener("storage", (e) => {
+          if (e.key !== "phx:theme") return;
+          if (e.newValue === "system") {
+            document.documentElement.removeAttribute("data-theme");
+            notifyThemeApplied();
+            return;
+          }
+          applyTheme(e.newValue || "light");
+        });
+        window.addEventListener("phx:set-theme", (e) => {
+          const fromDetail = e.detail && e.detail.theme;
+          const el = e.target && e.target.closest && e.target.closest("[data-phx-theme]");
+          const fromBtn = el && el.dataset.phxTheme;
+          const theme = fromDetail || fromBtn;
+          if (!theme) return;
+          applyTheme(theme);
+        });
+        // v0 app-topbar: single control toggles explicit light ↔ dark (same as next-themes toggle)
+        window.alonaToggleLightDark = () => {
+          const attr = document.documentElement.getAttribute("data-theme");
+          let isDark = false;
+          if (attr === "dark") isDark = true;
+          else if (attr === "light") isDark = false;
+          else isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          applyTheme(isDark ? "light" : "dark");
+        };
       })();
     </script>
   </head>
-  <body>
+  <body class="bg-base-100 font-sans text-base-content antialiased">
     {@inner_content}
   </body>
 </html>
