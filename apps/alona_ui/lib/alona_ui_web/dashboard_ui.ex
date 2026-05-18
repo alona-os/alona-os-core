@@ -25,11 +25,14 @@ defmodule AlonaUiWeb.DashboardUi do
 
   attr :trend_label, :string, default: nil
 
+  attr :icon, :string, default: nil
+
   def metric_card(assigns) do
     assigns =
       assigns
       |> assign(:border_tone, Map.get(@metric_borders, assigns.status, "border-base-300"))
       |> assign(:shown, format_reading(assigns.value))
+      |> assign(:show_aside?, assigns.icon != nil or assigns.trend_label != nil)
 
     ~H"""
     <article class={"rounded-xl border bg-base-100 shadow-sm border-l-4 p-4 #{@border_tone}"}>
@@ -48,9 +51,12 @@ defmodule AlonaUiWeb.DashboardUi do
           <p :if={@subtitle} class="text-xs text-base-content/55">{@subtitle}</p>
         </div>
 
-        <span :if={@trend_label} class="text-xs font-medium text-success">
-          {@trend_label}
-        </span>
+        <div :if={@show_aside?} class="flex flex-col items-end gap-2">
+          <.icon :if={@icon} name={@icon} class="size-5 text-base-content/60" />
+          <span :if={@trend_label} class="text-xs font-medium text-success">
+            {@trend_label}
+          </span>
+        </div>
       </div>
     </article>
     """
@@ -71,8 +77,11 @@ defmodule AlonaUiWeb.DashboardUi do
       assigns
       |> assign(:temp_text, format_reading(assigns.temperature))
       |> assign(:humi_text, format_reading(assigns.humidity))
-      |> assign(:sensor_tone, assigns.sensor_status == :online && "text-success" || "text-error")
-      |> assign(:sensor_note, assigns.sensor_status == :online && "online" || "offline")
+      |> assign(
+        :sensor_tone,
+        (assigns.sensor_status == :online && "text-success") || "text-error"
+      )
+      |> assign(:sensor_note, (assigns.sensor_status == :online && "online") || "offline")
 
     ~H"""
     <article class="rounded-xl border border-base-300 bg-base-100 p-4 shadow-sm">
@@ -112,7 +121,9 @@ defmodule AlonaUiWeb.DashboardUi do
         </div>
       </div>
 
-      <p class="mt-3 border-t border-base-200 pt-3 text-xs text-base-content/55">{last_seen_text(@last_seen)}</p>
+      <p class="mt-3 border-t border-base-200 pt-3 text-xs text-base-content/55">
+        {last_seen_text(@last_seen)}
+      </p>
     </article>
     """
   end
@@ -213,7 +224,10 @@ defmodule AlonaUiWeb.DashboardUi do
         <p :if={not blank?(@task.description)} class="mt-1 line-clamp-2 text-xs text-base-content/60">
           {@task.description}
         </p>
-        <div :if={@show_meta?} class="mt-2 flex flex-wrap items-center gap-3 text-xs text-base-content/60">
+        <div
+          :if={@show_meta?}
+          class="mt-2 flex flex-wrap items-center gap-3 text-xs text-base-content/60"
+        >
           <span :if={@due_txt != ""}>Due: {@due_txt}</span>
           <span :if={@src_lbl} class="capitalize">Source: {@src_lbl}</span>
         </div>
@@ -288,7 +302,8 @@ defmodule AlonaUiWeb.DashboardUi do
 
   defp last_seen_text(nil), do: "no measurement yet"
 
-  defp last_seen_text(%DateTime{} = dt), do: "last updated #{Calendar.strftime(dt, "%H:%M:%S utc")}"
+  defp last_seen_text(%DateTime{} = dt),
+    do: "last updated #{Calendar.strftime(dt, "%H:%M:%S utc")}"
 
   defp last_seen_text(_), do: "last updated unavailable"
 
