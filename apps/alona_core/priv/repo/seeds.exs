@@ -3,9 +3,17 @@ defmodule AlonaCore.Seeds do
 
   alias AlonaCore.Repo
 
-  alias AlonaCore.Topology.{Domain, Entity, Location}
+  alias AlonaCore.Topology.{Domain, Entity, Location, Property}
 
-  alias AlonaCore.Measurements.{CurrentValue, DataSource, Measurement, MeasurementStream, MetricDefinition}
+  alias AlonaCore.Measurements.{
+    CurrentValue,
+    DataSource,
+    Device,
+    Measurement,
+    MeasurementStream,
+    MetricDefinition,
+    Sensor
+  }
 
   alias AlonaCore.Tasks.Task
   alias AlonaCore.Finance.{Expense, ExpenseCategory}
@@ -14,14 +22,15 @@ defmodule AlonaCore.Seeds do
   def run do
     {:ok, _} =
       Repo.transaction(fn ->
+        property = seed_property()
         domains = seed_domains()
-        locations = seed_locations()
-        entities = seed_entities(domains, locations)
+        locations = seed_locations(property)
+        entities = seed_entities(domains, locations, property)
 
-        {_source, metric_ids} = seed_metrics_and_source()
+        {sources, metric_ids} = seed_metrics_and_sources(property)
+        {_streams, slug_to_id} = seed_streams(metric_ids, entities, property)
 
-        {_streams, slug_to_id} = seed_streams(metric_ids, entities)
-
+        seed_esp32_topology(sources, entities, slug_to_id)
         seed_measurements_and_current(slug_to_id)
         seed_tasks()
         seed_categories_and_expenses()
@@ -29,6 +38,18 @@ defmodule AlonaCore.Seeds do
 
         :ok
       end)
+  end
+
+  defp seed_property do
+    case Repo.get_by(Property, slug: "default-site") do
+      %Property{} = property ->
+        property
+
+      nil ->
+        %Property{}
+        |> Property.changeset(%{name: "Default Site", slug: "default-site", status: "active"})
+        |> Repo.insert!()
+    end
   end
 
   defp seed_domains do
@@ -48,61 +69,71 @@ defmodule AlonaCore.Seeds do
     end)
   end
 
-  defp seed_locations do
+  defp seed_locations(%Property{id: property_id}) do
     house =
       %Location{}
-      |> Location.changeset(%{name: "House", type: "building"})
+      |> Location.changeset(%{name: "House", type: "building", property_id: property_id})
       |> Repo.insert!()
 
     %{
       house: house,
       living_room:
-        insert_location!("Living Room", "room", house.id),
+        insert_location!("Living Room", "room", house.id, property_id),
       bedroom:
-        insert_location!("Bedroom", "room", house.id),
+        insert_location!("Bedroom", "room", house.id, property_id),
       bathroom:
-        insert_location!("Bathroom", "room", house.id),
+        insert_location!("Bathroom", "room", house.id, property_id),
       well:
         %Location{}
-        |> Location.changeset(%{name: "Well Area", type: "area"})
+        |> Location.changeset(%{name: "Well Area", type: "area", property_id: property_id})
         |> Repo.insert!()
     }
   end
 
-  defp insert_location!(name, type, parent_id) do
+  defp insert_location!(name, type, parent_id, property_id) do
     %Location{}
-    |> Location.changeset(%{name: name, type: type, parent_location_id: parent_id})
+    |> Location.changeset(%{
+      name: name,
+      type: type,
+      parent_location_id: parent_id,
+      property_id: property_id
+    })
     |> Repo.insert!()
   end
 
-  defp seed_entities(domains, locations) do
+  defp seed_entities(domains, locations, %Property{id: property_id}) do
     %{
       battery:
         insert_entity!(%{name: "Battery Bank"},
+          property_id: property_id,
           entity_type: "asset",
           primary_domain_id: domains.energy.id,
           location_id: locations.house.id
         ),
       pv:
         insert_entity!(%{name: "PV Array"},
+          property_id: property_id,
           entity_type: "asset",
           primary_domain_id: domains.energy.id,
           location_id: locations.house.id
         ),
       water_tank:
         insert_entity!(%{name: "Water Tank"},
+          property_id: property_id,
           entity_type: "asset",
           primary_domain_id: domains.water.id,
           location_id: locations.house.id
         ),
       well:
         insert_entity!(%{name: "Well"},
+          property_id: property_id,
           entity_type: "asset",
           primary_domain_id: domains.water.id,
           location_id: locations.well.id
         ),
       house_load:
         insert_entity!(%{name: "House Load"},
+          property_id: property_id,
           entity_type: "resource_system",
           primary_domain_id: domains.energy.id,
           location_id: locations.house.id
@@ -114,6 +145,7 @@ defmodule AlonaCore.Seeds do
             description: "living space comfort readings",
             aliases: ["living", "living room"]
           },
+          property_id: property_id,
           entity_type: "sensor",
           primary_domain_id: domains.environment.id,
           location_id: locations.living_room.id
@@ -121,6 +153,7 @@ defmodule AlonaCore.Seeds do
       bedroom:
         insert_entity!(
           %{name: "Bedroom Climate", aliases: ["bedroom"]},
+          property_id: property_id,
           entity_type: "sensor",
           primary_domain_id: domains.environment.id,
           location_id: locations.bedroom.id
@@ -128,6 +161,7 @@ defmodule AlonaCore.Seeds do
       bathroom:
         insert_entity!(
           %{name: "Bathroom Climate", aliases: ["bathroom"]},
+          property_id: property_id,
           entity_type: "sensor",
           primary_domain_id: domains.environment.id,
           location_id: locations.bathroom.id
@@ -135,6 +169,7 @@ defmodule AlonaCore.Seeds do
       food:
         insert_entity!(
           %{name: "Garden", description: "placeholder crop area"},
+          property_id: property_id,
           entity_type: "area",
           primary_domain_id: domains.resources.id,
           location_id: locations.house.id
@@ -148,14 +183,27 @@ defmodule AlonaCore.Seeds do
     |> Repo.insert!()
   end
 
-  defp seed_metrics_and_source do
-    source =
+  defp seed_metrics_and_sources(%Property{id: property_id}) do
+    seed_local =
       %DataSource{}
       |> DataSource.changeset(%{
+        property_id: property_id,
         name: "seed-local",
         source_type: "simulated",
         integration_type: "seed",
         status: "active"
+      })
+      |> Repo.insert!()
+
+    esp32_source =
+      %DataSource{}
+      |> DataSource.changeset(%{
+        property_id: property_id,
+        name: "living-room-esp32",
+        source_type: "mqtt",
+        integration_type: "esp32",
+        status: "active",
+        metadata: %{node_id: "living-room"}
       })
       |> Repo.insert!()
 
@@ -188,7 +236,7 @@ defmodule AlonaCore.Seeds do
       Enum.find(inserted, &(&1.name == name)).id
     end
 
-    {source,
+    {%{seed_local: seed_local, esp32: esp32_source},
      %{
        soc: metrics.("battery_state_of_charge"),
        kw: metrics.("power_kw"),
@@ -200,7 +248,43 @@ defmodule AlonaCore.Seeds do
      }}
   end
 
-  defp seed_streams(metric_ids, entities) do
+  defp seed_esp32_topology(sources, entities, slug_to_id) do
+    device =
+      %Device{}
+      |> Device.changeset(%{
+        entity_id: entities.living_room.id,
+        data_source_id: sources.esp32.id,
+        device_type: "esp32",
+        manufacturer: "espressif",
+        model: "room-node",
+        firmware_version: "0.0.0-seed",
+        status: "active"
+      })
+      |> Repo.insert!()
+
+    for sensor_type <- ["temperature", "humidity"] do
+      %Sensor{}
+      |> Sensor.changeset(%{
+        entity_id: entities.living_room.id,
+        device_id: device.id,
+        sensor_type: sensor_type,
+        status: "active"
+      })
+      |> Repo.insert!()
+    end
+
+    for slug <- ["env_living_temp_c", "env_living_rh"] do
+      stream = Repo.get!(MeasurementStream, Map.fetch!(slug_to_id, slug))
+
+      stream
+      |> MeasurementStream.changeset(%{data_source_id: sources.esp32.id})
+      |> Repo.update!()
+    end
+
+    :ok
+  end
+
+  defp seed_streams(metric_ids, entities, %Property{id: property_id}) do
     subject = &%{subject_entity_id: &1.id}
 
     defs = [
@@ -240,6 +324,7 @@ defmodule AlonaCore.Seeds do
         %MeasurementStream{}
         |> MeasurementStream.changeset(
           Map.merge(extra, %{
+            property_id: property_id,
             name: name,
             slug: slug,
             metric_id: metric_id,

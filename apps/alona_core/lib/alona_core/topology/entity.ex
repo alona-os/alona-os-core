@@ -13,6 +13,7 @@ defmodule AlonaCore.Topology.Entity do
     field :notes, :string
     field :metadata, :map, default: %{}
 
+    belongs_to :property, AlonaCore.Topology.Property
     belongs_to :primary_domain, AlonaCore.Topology.Domain, foreign_key: :primary_domain_id
     belongs_to :location, AlonaCore.Topology.Location
     belongs_to :parent, __MODULE__, foreign_key: :parent_entity_id
@@ -32,11 +33,13 @@ defmodule AlonaCore.Topology.Entity do
       :retired_at,
       :notes,
       :metadata,
+      :property_id,
       :primary_domain_id,
       :location_id,
       :parent_entity_id
     ])
-    |> validate_required([:name, :entity_type, :status])
+    |> validate_required([:name, :entity_type, :status, :property_id])
+    |> unique_constraint([:property_id, :name])
     |> validate_length(:aliases, max: 50)
     |> foreign_key_constraint(:primary_domain_id)
     |> foreign_key_constraint(:location_id)

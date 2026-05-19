@@ -3,6 +3,7 @@ defmodule AlonaCore.Measurements.DataSource do
   import Ecto.Changeset
 
   schema "data_sources" do
+    belongs_to :property, AlonaCore.Topology.Property
     field :name, :string
     field :source_type, :string
     field :integration_type, :string
@@ -16,7 +17,7 @@ defmodule AlonaCore.Measurements.DataSource do
 
   def changeset(struct, attrs) do
     struct
-    |> cast(attrs, [:name, :source_type, :integration_type, :status, :last_seen_at, :metadata])
-    |> validate_required([:name, :source_type, :status])
+    |> cast(attrs, [:property_id, :name, :source_type, :integration_type, :status, :last_seen_at, :metadata])
+    |> validate_required([:property_id, :name, :source_type, :status])
   end
 end

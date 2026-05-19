@@ -3,6 +3,7 @@ defmodule AlonaCore.Measurements.MeasurementStream do
   import Ecto.Changeset
 
   schema "measurement_streams" do
+    belongs_to :property, AlonaCore.Topology.Property
     field :name, :string
     field :slug, :string
     belongs_to :metric, AlonaCore.Measurements.MetricDefinition, foreign_key: :metric_id
@@ -23,6 +24,7 @@ defmodule AlonaCore.Measurements.MeasurementStream do
   def changeset(struct, attrs) do
     struct
     |> cast(attrs, [
+      :property_id,
       :name,
       :slug,
       :metric_id,
@@ -34,6 +36,7 @@ defmodule AlonaCore.Measurements.MeasurementStream do
       :aggregation_type,
       :is_active
     ])
-    |> validate_required([:name, :slug, :metric_id, :unit])
+    |> validate_required([:property_id, :name, :slug, :metric_id, :unit])
+    |> unique_constraint([:property_id, :slug])
   end
 end
