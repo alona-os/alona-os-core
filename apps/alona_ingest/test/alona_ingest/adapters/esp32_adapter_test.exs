@@ -69,6 +69,31 @@ defmodule AlonaIngest.Adapters.Esp32AdapterTest do
       assert envelope["value"] == 21.0
     end
 
+    test "single humidity reading returns one envelope" do
+      payload =
+        Map.put(@payload, "readings", %{"relative_humidity_pct" => 49.0})
+
+      assert {:ok, [envelope]} = Esp32Adapter.normalize(payload)
+      assert envelope["stream_slug"] == "env_living_rh"
+      assert envelope["value"] == 49.0
+    end
+
+    test "empty readings map returns no_mappable_readings" do
+      payload = Map.put(@payload, "readings", %{})
+
+      assert {:error, :no_mappable_readings} = Esp32Adapter.normalize(payload)
+    end
+
+    test "both known readings non-numeric returns no_mappable_readings" do
+      payload =
+        Map.put(@payload, "readings", %{
+          "temperature_c" => "warm",
+          "relative_humidity_pct" => "wet"
+        })
+
+      assert {:error, :no_mappable_readings} = Esp32Adapter.normalize(payload)
+    end
+
     test "unknown readings only returns no_mappable_readings" do
       payload = Map.put(@payload, "readings", %{"pressure_hpa" => 1013.0})
 

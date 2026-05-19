@@ -4,6 +4,16 @@ Telemetry ingestion for measurements: **v1 envelope** parsing and MQTT transport
 
 Envelope path: MQTT bytes → adapters → [`AlonaIngest.Ingest.ingest/1`](lib/alona_ingest/ingest.ex) → `AlonaCore.Measurements.ingest_point/1`.
 
+## ESP32 Living Room wire contract (v1)
+
+**Topic:** `alona/esp32/living-room/telemetry`
+
+**Mapping:** `readings.temperature_c` → `env_living_temp_c`; `readings.relative_humidity_pct` → `env_living_rh` (see firmware doc for fields, units, errors, and examples).
+
+Full human-readable contract (do not duplicate here): [`alona-os-firmware/docs/esp32-mqtt-v1.md`](../../../alona-os-firmware/docs/esp32-mqtt-v1.md).
+
+If you set `ALONA_MQTT_TOPICS`, include `alona/esp32/living-room/telemetry` or ingest will not receive messages.
+
 ## Configuration
 
 Defaults live in [`config/config.exs`](../../config/config.exs); non-test overlays use [`config/mqtt_runtime.exs`](../../config/mqtt_runtime.exs) (loaded after `dev.exs` / `prod.exs`). Tests set `enabled: false` in [`config/test.exs`](../../config/test.exs).
@@ -25,7 +35,7 @@ Requires Postgres seeded (`./setup.sh` or `mix ecto.seed`) so `env_living_temp_c
 
 1. Run a broker on `${ALONA_MQTT_HOST:-localhost}` port `${ALONA_MQTT_PORT:-1883}` (anonymous clients OK for LAN dev).
 2. From `alona-os-core/`: `mix phx.server` (`alona_ingest` starts with the umbrella via `alona_ui`; use `ALONA_MQTT_ENABLED=false` to skip MQTT).
-3. Publish gateway-style JSON:
+3. Publish gateway-style JSON (matches [`Esp32Adapter`](lib/alona_ingest/adapters/esp32_adapter.ex)):
 
 ```bash
 mosquitto_pub -h localhost -p 1883 \

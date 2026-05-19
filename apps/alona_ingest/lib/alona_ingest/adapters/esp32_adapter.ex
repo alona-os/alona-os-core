@@ -5,19 +5,8 @@ defmodule AlonaIngest.Adapters.Esp32Adapter do
   Expects payloads published by an ESP32 gateway (ESP-NOW → MQTT/JSON). Each mappable
   entry in `readings` becomes one envelope for `AlonaIngest.Telemetry.Envelope.parse/1`.
 
-  ## Input (version 1)
-
-      {
-        "version": 1,
-        "device_id": "living-room-node-01",
-        "measured_at": "2026-05-19T19:30:00Z",
-        "readings": {
-          "temperature_c": 22.4,
-          "relative_humidity_pct": 58.1
-        },
-        "battery_mv": 4120,
-        "rssi_dbm": -67
-      }
+  Living Room MVP wire contract (topic, fields, units, errors): see
+  `alona-os-firmware/docs/esp32-mqtt-v1.md` at the workspace root.
 
   MVP reading → stream slug mapping is fixed in `@reading_slugs` (living room env streams).
   `device_id` is stored in envelope `raw` only; routing by device is not implemented yet.

@@ -19,6 +19,8 @@ defmodule AlonaIngest.Mqtt.TopicRouterTest do
             }
           })
 
+  defp encode_payload(attrs), do: Jason.encode!(attrs)
+
   describe "route/2" do
     test "unknown topic returns :ignored" do
       assert TopicRouter.route("some/other/topic", @payload) == {:ok, :ignored}
@@ -26,6 +28,49 @@ defmodule AlonaIngest.Mqtt.TopicRouterTest do
 
     test "invalid json returns normalize error from adapter path" do
       assert TopicRouter.route(@mqtt_topic, "{not json") == {:error, :invalid_json}
+    end
+
+    test "empty mqtt payload returns invalid_json" do
+      assert TopicRouter.route(@mqtt_topic, <<>>) == {:error, :invalid_json}
+    end
+
+    test "unsupported version returns unsupported_version" do
+      payload =
+        encode_payload(%{
+          "version" => 2,
+          "device_id" => "living-room-node-01",
+          "readings" => %{"temperature_c" => 20.0}
+        })
+
+      assert TopicRouter.route(@mqtt_topic, payload) == {:error, :unsupported_version}
+    end
+
+    test "missing device_id returns invalid_payload" do
+      payload =
+        encode_payload(%{
+          "version" => 1,
+          "readings" => %{"temperature_c" => 20.0}
+        })
+
+      assert TopicRouter.route(@mqtt_topic, payload) == {:error, :invalid_payload}
+    end
+
+    test "no mappable readings returns no_mappable_readings" do
+      payload =
+        encode_payload(%{
+          "version" => 1,
+          "device_id" => "living-room-node-01",
+          "readings" => %{}
+        })
+
+      assert TopicRouter.route(@mqtt_topic, payload) == {:error, :no_mappable_readings}
+    end
+
+    test "ingests both readings when streams exist" do
+      telemetry_fixture(slug: "env_living_temp_c")
+      telemetry_fixture(slug: "env_living_rh")
+
+      assert TopicRouter.route(@mqtt_topic, @payload) == {:ok, :ingested}
     end
 
     test "returns partial_ingest_failed when rh stream missing" do
