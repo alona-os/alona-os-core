@@ -48,4 +48,17 @@ config :logger, :default_formatter,
 
 config :phoenix, :json_library, Jason
 
+config :alona_ingest, AlonaIngest.Mqtt.Client,
+  enabled: true,
+  host: "localhost",
+  port: 1883,
+  topics: ["alona/esp32/living-room/telemetry"],
+  client_id: "alona-ingest",
+  user_name: nil,
+  password: nil
+
 import_config "#{config_env()}.exs"
+
+if config_env() in [:dev, :prod] do
+  import_config "mqtt_runtime.exs"
+end

@@ -40,7 +40,8 @@ defmodule AlonaIngest.MixProject do
   defp deps do
     [
       {:alona_core, in_umbrella: true},
-      {:jason, "~> 1.2"}
+      {:jason, "~> 1.2"},
+      {:tortoise311, "~> 0.12"}
     ]
   end
 end
