@@ -10,12 +10,13 @@ defmodule AlonaIngest.MixProject do
       deps_path: "../../deps",
       lockfile: "../../mix.lock",
       elixir: "~> 1.15",
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      aliases: aliases()
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
   def application do
     [
       extra_applications: [:logger],
@@ -23,8 +24,23 @@ defmodule AlonaIngest.MixProject do
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
+
+  defp aliases do
+    [
+      test: [
+        "ecto.create --quiet -r AlonaCore.Repo",
+        "ecto.migrate -r AlonaCore.Repo",
+        "test"
+      ]
+    ]
+  end
+
   defp deps do
-    [{:alona_core, in_umbrella: true}]
+    [
+      {:alona_core, in_umbrella: true},
+      {:jason, "~> 1.2"}
+    ]
   end
 end
