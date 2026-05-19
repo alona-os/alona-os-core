@@ -40,24 +40,51 @@ defmodule AlonaCore.Seeds do
       end)
   end
 
-  defp seed_property do
-    case Repo.get_by(Property, slug: "default-site") do
-      %Property{} = property ->
-        property
-
+  defp get_or_insert_by!(schema, lookup, attrs, changeset_fn) do
+    case get_by_lookup(schema, lookup) do
       nil ->
-        %Property{}
-        |> Property.changeset(%{name: "Default Site", slug: "default-site", status: "active"})
+        struct(schema)
+        |> changeset_fn.(Map.merge(Enum.into(lookup, %{}), attrs))
         |> Repo.insert!()
+
+      record ->
+        record
     end
+  end
+
+  defp get_by_lookup(schema, lookup) do
+    import Ecto.Query
+
+    {nil_keys, present_keys} = Enum.split_with(lookup, fn {_key, value} -> is_nil(value) end)
+
+    query = from(s in schema)
+
+    query =
+      Enum.reduce(present_keys, query, fn {key, value}, acc ->
+        where(acc, [s], field(s, ^key) == ^value)
+      end)
+
+    query =
+      Enum.reduce(nil_keys, query, fn {key, _value}, acc ->
+        where(acc, [s], is_nil(field(s, ^key)))
+      end)
+
+    Repo.one(query)
+  end
+
+  defp seed_property do
+    get_or_insert_by!(
+      Property,
+      [slug: "default-site"],
+      %{name: "Default Site", status: "active"},
+      &Property.changeset/2
+    )
   end
 
   defp seed_domains do
     [{"Energy", "energy"}, {"Water", "water"}, {"Environment", "environment"}, {"Resources", "resources"}]
     |> Enum.map(fn {name, slug} ->
-      %Domain{}
-      |> Domain.changeset(%{name: name, slug: slug, status: "active"})
-      |> Repo.insert!()
+      get_or_insert_by!(Domain, [slug: slug], %{name: name, status: "active"}, &Domain.changeset/2)
     end)
     |> then(fn domains ->
       %{
@@ -70,10 +97,7 @@ defmodule AlonaCore.Seeds do
   end
 
   defp seed_locations(%Property{id: property_id}) do
-    house =
-      %Location{}
-      |> Location.changeset(%{name: "House", type: "building", property_id: property_id})
-      |> Repo.insert!()
+    house = insert_location!("House", "building", nil, property_id)
 
     %{
       house: house,
@@ -84,21 +108,17 @@ defmodule AlonaCore.Seeds do
       bathroom:
         insert_location!("Bathroom", "room", house.id, property_id),
       well:
-        %Location{}
-        |> Location.changeset(%{name: "Well Area", type: "area", property_id: property_id})
-        |> Repo.insert!()
+        insert_location!("Well Area", "area", nil, property_id)
     }
   end
 
   defp insert_location!(name, type, parent_id, property_id) do
-    %Location{}
-    |> Location.changeset(%{
-      name: name,
-      type: type,
-      parent_location_id: parent_id,
-      property_id: property_id
-    })
-    |> Repo.insert!()
+    get_or_insert_by!(
+      Location,
+      [property_id: property_id, name: name, parent_location_id: parent_id],
+      %{type: type},
+      &Location.changeset/2
+    )
   end
 
   defp seed_entities(domains, locations, %Property{id: property_id}) do
@@ -178,34 +198,38 @@ defmodule AlonaCore.Seeds do
   end
 
   defp insert_entity!(base_attrs, extra_kw) when is_map(base_attrs) and is_list(extra_kw) do
-    %Entity{}
-    |> Entity.changeset(Map.merge(base_attrs, Enum.into(extra_kw, %{})))
-    |> Repo.insert!()
+    attrs = Map.merge(base_attrs, Enum.into(extra_kw, %{}))
+    property_id = Map.fetch!(attrs, :property_id)
+    name = Map.fetch!(attrs, :name)
+
+    get_or_insert_by!(Entity, [property_id: property_id, name: name], attrs, &Entity.changeset/2)
   end
 
   defp seed_metrics_and_sources(%Property{id: property_id}) do
     seed_local =
-      %DataSource{}
-      |> DataSource.changeset(%{
-        property_id: property_id,
-        name: "seed-local",
-        source_type: "simulated",
-        integration_type: "seed",
-        status: "active"
-      })
-      |> Repo.insert!()
+      get_or_insert_by!(
+        DataSource,
+        [property_id: property_id, name: "seed-local"],
+        %{
+          source_type: "simulated",
+          integration_type: "seed",
+          status: "active"
+        },
+        &DataSource.changeset/2
+      )
 
     esp32_source =
-      %DataSource{}
-      |> DataSource.changeset(%{
-        property_id: property_id,
-        name: "living-room-esp32",
-        source_type: "mqtt",
-        integration_type: "esp32",
-        status: "active",
-        metadata: %{node_id: "living-room"}
-      })
-      |> Repo.insert!()
+      get_or_insert_by!(
+        DataSource,
+        [property_id: property_id, name: "living-room-esp32"],
+        %{
+          source_type: "mqtt",
+          integration_type: "esp32",
+          status: "active",
+          metadata: %{node_id: "living-room"}
+        },
+        &DataSource.changeset/2
+      )
 
     inserted =
       [
@@ -225,11 +249,12 @@ defmodule AlonaCore.Seeds do
             "number"
           end
 
-        %MetricDefinition{}
-        |> MetricDefinition.changeset(
-          Map.merge(attrs, %{value_type: value_type, category: "seed"})
+        get_or_insert_by!(
+          MetricDefinition,
+          [name: attrs.name],
+          Map.merge(attrs, %{value_type: value_type, category: "seed"}),
+          &MetricDefinition.changeset/2
         )
-        |> Repo.insert!()
       end)
 
     metrics = fn name ->
@@ -250,27 +275,30 @@ defmodule AlonaCore.Seeds do
 
   defp seed_esp32_topology(sources, entities, slug_to_id) do
     device =
-      %Device{}
-      |> Device.changeset(%{
-        entity_id: entities.living_room.id,
-        data_source_id: sources.esp32.id,
-        device_type: "esp32",
-        manufacturer: "espressif",
-        model: "room-node",
-        firmware_version: "0.0.0-seed",
-        status: "active"
-      })
-      |> Repo.insert!()
+      get_or_insert_by!(
+        Device,
+        [entity_id: entities.living_room.id, data_source_id: sources.esp32.id],
+        %{
+          device_type: "esp32",
+          manufacturer: "espressif",
+          model: "room-node",
+          firmware_version: "0.0.0-seed",
+          status: "active"
+        },
+        &Device.changeset/2
+      )
 
     for sensor_type <- ["temperature", "humidity"] do
-      %Sensor{}
-      |> Sensor.changeset(%{
-        entity_id: entities.living_room.id,
-        device_id: device.id,
-        sensor_type: sensor_type,
-        status: "active"
-      })
-      |> Repo.insert!()
+      get_or_insert_by!(
+        Sensor,
+        [
+          entity_id: entities.living_room.id,
+          device_id: device.id,
+          sensor_type: sensor_type
+        ],
+        %{status: "active"},
+        &Sensor.changeset/2
+      )
     end
 
     for slug <- ["env_living_temp_c", "env_living_rh"] do
@@ -321,18 +349,17 @@ defmodule AlonaCore.Seeds do
 
     streams =
       Enum.map(defs, fn {name, slug, metric_id, unit, extra} ->
-        %MeasurementStream{}
-        |> MeasurementStream.changeset(
+        get_or_insert_by!(
+          MeasurementStream,
+          [property_id: property_id, slug: slug],
           Map.merge(extra, %{
-            property_id: property_id,
             name: name,
-            slug: slug,
             metric_id: metric_id,
             unit: unit,
             is_active: true
-          })
+          }),
+          &MeasurementStream.changeset/2
         )
-        |> Repo.insert!()
       end)
 
     slug_map = Map.new(streams, fn s -> {s.slug, s.id} end)
@@ -401,36 +428,42 @@ defmodule AlonaCore.Seeds do
   defp seed_tasks do
     today = utc_midnight(Date.utc_today())
 
-    %Task{}
-    |> Task.changeset(%{
-      title: "Replace water filter",
-      description: "Monthly water filter cartridge swap",
-      status: "pending",
-      priority: "high",
-      due_at: today,
-      source_type: "protocol"
-    })
-    |> Repo.insert!()
+    get_or_insert_by!(
+      Task,
+      [title: "Replace water filter"],
+      %{
+        description: "Monthly water filter cartridge swap",
+        status: "pending",
+        priority: "high",
+        due_at: today,
+        source_type: "protocol"
+      },
+      &Task.changeset/2
+    )
 
-    %Task{}
-    |> Task.changeset(%{
-      title: "Check PV wiring",
-      status: "overdue",
-      priority: "high",
-      due_at: DateTime.add(today, -3 * 24 * 60 * 60, :second),
-      source_type: "maintenance"
-    })
-    |> Repo.insert!()
+    get_or_insert_by!(
+      Task,
+      [title: "Check PV wiring"],
+      %{
+        status: "overdue",
+        priority: "high",
+        due_at: DateTime.add(today, -3 * 24 * 60 * 60, :second),
+        source_type: "maintenance"
+      },
+      &Task.changeset/2
+    )
 
-    %Task{}
-    |> Task.changeset(%{
-      title: "Prune greenhouse tomatoes",
-      status: "in_progress",
-      priority: "low",
-      due_at: DateTime.add(today, 2 * 24 * 60 * 60, :second),
-      source_type: "manual"
-    })
-    |> Repo.insert!()
+    get_or_insert_by!(
+      Task,
+      [title: "Prune greenhouse tomatoes"],
+      %{
+        status: "in_progress",
+        priority: "low",
+        due_at: DateTime.add(today, 2 * 24 * 60 * 60, :second),
+        source_type: "manual"
+      },
+      &Task.changeset/2
+    )
 
     :ok
   end
@@ -441,20 +474,20 @@ defmodule AlonaCore.Seeds do
 
   defp seed_categories_and_expenses do
     supplies =
-      %ExpenseCategory{}
-      |> ExpenseCategory.changeset(%{name: "Supplies"})
-      |> Repo.insert!()
+      get_or_insert_by!(ExpenseCategory, [name: "Supplies"], %{}, &ExpenseCategory.changeset/2)
 
-    %Expense{}
-    |> Expense.changeset(%{
-      date: Date.utc_today(),
-      title: "Garden seeds",
-      amount: Decimal.new("24.50"),
-      currency: "USD",
-      category_id: supplies.id,
-      vendor: "local store"
-    })
-    |> Repo.insert!()
+    get_or_insert_by!(
+      Expense,
+      [title: "Garden seeds"],
+      %{
+        date: Date.utc_today(),
+        amount: Decimal.new("24.50"),
+        currency: "USD",
+        category_id: supplies.id,
+        vendor: "local store"
+      },
+      &Expense.changeset/2
+    )
 
     :ok
   end
@@ -462,25 +495,29 @@ defmodule AlonaCore.Seeds do
   defp seed_events do
     now = DateTime.utc_now(:microsecond)
 
-    %Event{}
-    |> Event.changeset(%{
-      event_type: "threshold",
-      severity: "warning",
-      title: "Water tank below 70%",
-      description: "House tank crossed the comfort threshold",
-      occurred_at: DateTime.add(now, -30 * 60, :second)
-    })
-    |> Repo.insert!()
+    get_or_insert_by!(
+      Event,
+      [title: "Water tank below 70%"],
+      %{
+        event_type: "threshold",
+        severity: "warning",
+        description: "House tank crossed the comfort threshold",
+        occurred_at: DateTime.add(now, -30 * 60, :second)
+      },
+      &Event.changeset/2
+    )
 
-    %Event{}
-    |> Event.changeset(%{
-      event_type: "measurement",
-      severity: "info",
-      title: "Battery SOC updated",
-      description: "Battery climbed to healthy range",
-      occurred_at: DateTime.add(now, -5 * 60, :second)
-    })
-    |> Repo.insert!()
+    get_or_insert_by!(
+      Event,
+      [title: "Battery SOC updated"],
+      %{
+        event_type: "measurement",
+        severity: "info",
+        description: "Battery climbed to healthy range",
+        occurred_at: DateTime.add(now, -5 * 60, :second)
+      },
+      &Event.changeset/2
+    )
 
     :ok
   end
