@@ -1,6 +1,8 @@
 # AlonaIngest
 
-Telemetry ingestion for measurements: **v1 envelope** parsing and MQTT transport (`tortoise311`) for ESP32 payloads.
+Telemetry ingestion for measurements: **v1 envelope** parsing and MQTT transport (`tortoise311`) for **ESP32 gateway** payloads.
+
+**Architecture:** sensor nodes use **ESP-NOW** to a gateway; only the gateway publishes MQTT (see [`esp32-espnow-v1.md`](../../../alona-os-firmware/docs/esp32-espnow-v1.md)). This app implements the **gateway → Pi** leg.
 
 Envelope path: MQTT bytes → adapters → [`AlonaIngest.Ingest.ingest/1`](lib/alona_ingest/ingest.ex) → `AlonaCore.Measurements.ingest_point/1`.
 
@@ -10,7 +12,7 @@ Envelope path: MQTT bytes → adapters → [`AlonaIngest.Ingest.ingest/1`](lib/a
 
 **Mapping:** `readings.temperature_c` → `env_living_temp_c`; `readings.relative_humidity_pct` → `env_living_rh` (see firmware doc for fields, units, errors, and examples).
 
-Full human-readable contract (do not duplicate here): [`alona-os-firmware/docs/esp32-mqtt-v1.md`](../../../alona-os-firmware/docs/esp32-mqtt-v1.md).
+Full human-readable contract (do not duplicate here): [`alona-os-firmware/docs/esp32-mqtt-v1.md`](../../../alona-os-firmware/docs/esp32-mqtt-v1.md) (gateway → Pi). Node → gateway: [`esp32-espnow-v1.md`](../../../alona-os-firmware/docs/esp32-espnow-v1.md).
 
 If you set `ALONA_MQTT_TOPICS`, include `alona/esp32/living-room/telemetry` or ingest will not receive messages.
 

@@ -2,12 +2,9 @@ defmodule AlonaIngest.Adapters.Esp32Adapter do
   @moduledoc """
   ESP32 gateway payload adapter: device JSON → v1 envelope maps.
 
-  Expects payloads published by an ESP32 gateway (ESP-NOW → MQTT/JSON). Each mappable
-  entry in `readings` becomes one envelope for `AlonaIngest.Telemetry.Envelope.parse/1`.
-
-  Living Room MVP wire contract (topic, fields, units, errors): see
-  `alona-os-firmware/docs/esp32-mqtt-v1.md` at the workspace root.
-
+  Expects payloads published by an ESP32 **gateway** (forwards ESP-NOW node frames as MQTT/JSON).
+  Node → gateway contract: `alona-os-firmware/docs/esp32-espnow-v1.md`.
+  Gateway → Pi contract: `alona-os-firmware/docs/esp32-mqtt-v1.md`.
   MVP reading → stream slug mapping is fixed in `@reading_slugs` (living room env streams).
   `device_id` is stored in envelope `raw` only; routing by device is not implemented yet.
   """
