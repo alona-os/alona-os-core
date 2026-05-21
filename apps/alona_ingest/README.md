@@ -35,7 +35,7 @@ Environment variables (`ALONA_MQTT_*`): see [`alona-os-infra/env/alona.env.examp
 
 Requires Postgres seeded (`./setup.sh` or `mix ecto.seed`) so `env_living_temp_c` and `env_living_rh` streams exist.
 
-1. Run a broker on `${ALONA_MQTT_HOST:-localhost}` port `${ALONA_MQTT_PORT:-1883}` (anonymous clients OK for LAN dev).
+1. Run a broker on `${ALONA_MQTT_HOST:-localhost}` port `${ALONA_MQTT_PORT:-1883}` (anonymous clients OK for LAN dev). For **ESP32 gateways** on the LAN, **`ALONA_MQTT_HOST` must be the broker’s reachable LAN IP**, not `localhost`/`127.0.0.1`, and Mosquitto must **`listener` bind to LAN** (not only `127.0.0.1`) — see [`alona-os-firmware/docs/gateway-setup.md`](../../../alona-os-firmware/docs/gateway-setup.md#run-mosquitto-plaintext-mqtt).
 2. From `alona-os-core/`: `mix phx.server` (`alona_ingest` starts with the umbrella via `alona_ui`; use `ALONA_MQTT_ENABLED=false` to skip MQTT).
 3. Publish gateway-style JSON (matches [`Esp32Adapter`](lib/alona_ingest/adapters/esp32_adapter.ex)):
 
