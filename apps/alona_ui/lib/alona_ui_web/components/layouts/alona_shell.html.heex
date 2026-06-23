@@ -1,4 +1,4 @@
-<%!-- matches ref/app/layout.tsx + app-sidebar + app-topbar: h-screen overflow-hidden, aside w-56, main scrolls --%>
+<%!-- app shell: sidebar + topbar + scrolling main --%>
 <div class="flex h-screen overflow-hidden bg-base-100">
   <aside class="alona-shell-sidebar flex w-56 shrink-0 flex-col border-r border-[var(--alona-sidebar-border)] text-[var(--alona-sidebar-fg)]">
     <div class="flex h-14 shrink-0 items-center gap-2 border-b border-[var(--alona-sidebar-border)] px-3">
@@ -26,7 +26,7 @@
 
   <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
     <header class="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-base-300 bg-[var(--alona-topbar-bg)] px-4">
-      <%!-- v0 app-topbar: no title; left cluster + right actions (bg-card) --%>
+      <%!-- topbar: left cluster + right actions --%>
       <div class="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto">
         <div class="flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-3 py-1.5">
           <span class="size-2 animate-pulse rounded-full bg-success"></span>

@@ -268,22 +268,22 @@ defmodule AlonaUiWeb.CommandCenterLive do
 
             <div class="p-4">
               <div class="grid grid-cols-2 gap-2">
-                <.link navigate={~p"/tasks"} class="v0-quick-tile">
+                <.link navigate={~p"/tasks"} class="quick-action-tile">
                   <.icon name="hero-plus-micro" class="size-4" />
                   <span class="text-xs">Add Task</span>
                 </.link>
 
-                <.link navigate={~p"/finance"} class="v0-quick-tile">
+                <.link navigate={~p"/finance"} class="quick-action-tile">
                   <.icon name="hero-banknotes-micro" class="size-4" />
                   <span class="text-xs">Log Expense</span>
                 </.link>
 
-                <.link navigate={~p"/timeline"} class="v0-quick-tile">
+                <.link navigate={~p"/timeline"} class="quick-action-tile">
                   <.icon name="hero-eye-micro" class="size-4" />
                   <span class="text-xs">Observation</span>
                 </.link>
 
-                <.link navigate={~p"/protocols"} class="v0-quick-tile">
+                <.link navigate={~p"/protocols"} class="quick-action-tile">
                   <.icon name="hero-document-text-micro" class="size-4" />
                   <span class="text-xs">Protocol</span>
                 </.link>

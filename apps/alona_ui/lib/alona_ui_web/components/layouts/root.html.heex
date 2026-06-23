@@ -18,7 +18,7 @@
     </script>
     <script>
       (() => {
-        // default light matches v0 reference (light-first :root); use "system" in the toggle for OS preference
+        // default light-first; use "system" in the toggle for OS preference
         const notifyThemeApplied = () => window.dispatchEvent(new Event("alona-theme-applied"));
 
         const applyTheme = (theme) => {
@@ -59,7 +59,7 @@
           if (!theme) return;
           applyTheme(theme);
         });
-        // v0 app-topbar: single control toggles explicit light ↔ dark (same as next-themes toggle)
+        // topbar toggle: explicit light ↔ dark
         window.alonaToggleLightDark = () => {
           const attr = document.documentElement.getAttribute("data-theme");
           let isDark = false;

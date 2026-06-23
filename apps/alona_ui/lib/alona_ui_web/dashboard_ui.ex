@@ -1,6 +1,6 @@
 defmodule AlonaUiWeb.DashboardUi do
   @moduledoc """
-  reusable HEEx function components mirrored loosely from the v0 dashboard cards.
+  reusable HEEx function components for dashboard cards.
   """
   use Phoenix.Component
 
